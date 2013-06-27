@@ -18,3 +18,4 @@ Note:
   Did the same with more directories, still worked fine.
   Also, seems that recipes are working in order for the most part, but I still
   don't think there's any guarantee that they will.
+  Conditionals work even when you use run_action, which is perfect.
