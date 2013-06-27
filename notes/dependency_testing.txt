@@ -1,0 +1,121 @@
+Dependency Testing
+
+2 recipes: dir1, dir2
+
+dir1 creates ~/dir1
+dir2 creates ~/dir1/dir2
+
+Thus, dir2 is dependent on dir1 occurring first.
+We want to find a way to ensure that that happens.
+
+[ Test 1 ]
+
+Setup:
+  Set the run_list the only include both dir1 and dir2 (in order), and include
+  nothing indicating a dependency in the metadata.rb file.
+
+Results:
+  Succeeded in creating dir1 first, then dir2.
+  
+[ Test 2 ]
+
+Setup:
+  Set the run_list and only include both dir1 and dir2, but out of order (so
+  dir2 comes first and dir1 comes afterward. Expectation is that it will fail.
+  No dependencies are indicated in the metadata.rb file.
+  
+Results:
+  Indeed failed. Error is that the directory /home/ubuntu/dir1 does not exist so
+  the recipe that creates the dir2 subfolder cannot be run.
+  
+[ Test 3 ]
+
+Setup:
+  Set the run list to have dir2 then dir1, but add the dependency in the
+  metadata.rb file. Hopefully it will not fail!
+  
+Results:
+  Fails! Dependencies do not indicate any ordering; just that methods are
+  shared maybe?
+
+[ Test 4 ]
+
+Setup:
+  Run list only contains dir3, dir3 includes dir2, dir2 includes dir1. Hopefully
+  they run in the order created by the includes, and if they do then 3 nested
+  directories should be created successfully.
+
+Actual:
+  Succeeded!
+  
+[ Test 5 ]
+
+Setup:
+  Have the same setup as Test 4 except that in the dir3 recipe, also include
+  the creation of two more subdirectories using 'notifies' to start their
+  creation. Should create 5 total nested directories in the end.
+  
+Actual:
+  Succeeded! The 3 nested directory calls in the dir3 recipe were not in order,
+  but it still worked. The order of the code was dir3, dir5, dir4, but because I
+  added the notifies parts into the first directory creation, it made the order
+  correct. It would have been incorrect if the notifies were in the wrong order
+  or missing (tested for both cases).
+
+  > dir3::default
+  
+    include_recipe 'dir2::default'
+
+    directory "/home/ubuntu/dir1/dir2/dir3" do
+      owner "ubuntu"
+      group "ubuntu"
+      mode '0755'
+      action :create
+      notifies :create, 'directory[/home/ubuntu/dir1/dir2/dir3/dir4]', :immediately
+      notifies :create, 'directory[/home/ubuntu/dir1/dir2/dir3/dir4/dir5]', :immediately
+    end
+
+    directory "/home/ubuntu/dir1/dir2/dir3/dir4/dir5" do
+      owner "ubuntu"
+      group "ubuntu"
+      mode '0755'
+      action :create
+    end
+
+    directory "/home/ubuntu/dir1/dir2/dir3/dir4" do
+      owner "ubuntu"
+      group "ubuntu"
+      mode '0755'
+      action :create
+    end
+
+  < EOF
+  
+[ Test 6 ]
+
+Setup:
+  Try moving all the :create actions to after the directory block, as done here:
+    http://stackoverflow.com/questions/12921078/executing-chef-recipe-only-after-another-recipe-is-finished
+  Hopefully this will enforce some sort of order. To test, using the 3 directory
+  blocks in dir6. Saving each as a file (doing it in order dir8, dir7, dir6),
+  then creating in the proper order (dir6, dir7, dir8) to ensure that it all
+  orders appropriately.
+ 
+Results:
+  It tried to create the 6th one before the 7th and 8th, which is good, BUT it
+  tried to create the 6th before 1-5...meaning that it seems that recipes only
+  execute after all have been looked at and stuff. Even if they come earlier in
+  the code. It seems that maybe having the first one schedule everything else
+  might work best. That or have all the run_actions explicitly written out so
+  the order is enforced strictly.
+  
+  also helpful: http://docs.opscode.com/resource_common_compile.html  
+
+Conclusions:
+  - notifies should be able to be used to ensure that the creation of one
+    directory or file occurs before something else.
+  - supposedly including recipes should work in the same way, but I'm not so
+    sure about that...
+  - dependencies are absolutely useless for ordering recipes
+  - it's best not to mix run_action with notifies...use one or the other and
+    it should work, but using both causes issues
