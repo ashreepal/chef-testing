@@ -1,0 +1,20 @@
+Conditionals Testing
+
+Want to see if we can use only_if and not_if to specify when things can and
+should be created. This way we can avoid trying to create directories on the
+instance if they already exist.
+
+[ Test 1 ]
+
+Setup:
+  The run list calls just recipe dir2 (which includes dir1) and
+  there is an only_if '.../dir1' exists then create dir2. We run dir2 first to
+  ensure that it is not created.
+
+Results:
+  Success! When dir2 called before dir1, it is not created and only dir1 is.
+
+Note:
+  Did the same with more directories, still worked fine.
+  Also, seems that recipes are working in order for the most part, but I still
+  don't think there's any guarantee that they will.
