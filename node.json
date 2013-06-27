@@ -1,4 +1,4 @@
 
 {
-  "run_list": [ "recipe[dir6]" ]
+  "run_list": [ "recipe[recur]" ]
 }
